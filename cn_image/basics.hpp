@@ -98,8 +98,6 @@ namespace cn_image {
 			}
 		}
 
-		cout << threshold << endl;
-
 		//Binarise
 		for (j = 0; j < img.get_height(); j++)
 			for (i = 0; i < img.get_width(); i++)
