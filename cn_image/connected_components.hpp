@@ -30,6 +30,9 @@ namespace cn_image {
 	vector<int> disjointSetLabel;
 	vector<int> disjointSetRank;
 
+	vector< vector<int> > label;
+	map<int, int> setLabel;
+
 	/*
 	 * findLabel
 	 */
@@ -75,16 +78,20 @@ namespace cn_image {
 	 *
 	 * In other words, each object detected by disjoint-sets gets its own image
 	 * to live in. Neat.
+	 *
+	 * Also, a threshold can be specified so a minimum number of pixels must be
+	 * set for the set to be valid. This is to prevent sets of single pixels,
+	 * or the like.
 	 */
 
 	template <typename T>
 	void split_by_connected_components(
 		image_processor<T> &img,
-		vector< image_processor<T> > &imgs
+		vector< image_processor<T> > &imgs,
+		int threshold = 0
 	) {
 		//Disjoint-set computation (This comes straight out of the HW...)
 		int Nrow, Ncol, i, j, v, u;
-		vector< vector<int> > label;
 		vector< vector<T> > &pixels = img.ext_get_pixels();
 
 		nextLabel = 1; // initial object label
@@ -93,6 +100,7 @@ namespace cn_image {
 		Nrow = img.get_height();
 		Ncol = img.get_width();
 
+		label.clear();
 		label.resize(Ncol, vector<int>(Nrow, 0));
 
 		disjointSetLabel.clear();
@@ -135,22 +143,45 @@ namespace cn_image {
 			}
 		}
 
-		cout << Nobjects << endl;
 
-		map<int, int> setLabel;
+		setLabel.clear();
 		setLabel[0] = 0;
+
+		//Construct images
+		vector< image_processor<T> > tmp_imgs;
+		tmp_imgs.resize(Nobjects);
+
+		//By default, make all pixels zero
+		for (i = 0; i < Nobjects; i++)
+			tmp_imgs[i].resize(Ncol, Nrow);
+
+		//Set volume to 0
+		vector<int> volume;
+		volume.resize(Nobjects, 0);
 
 		for (v = 0; v < Nrow; v++) {
 			for (u = 0; u < Ncol; u++) {
 				int Luv = findLabel(label[u][v]);
+
 				if (setLabel.find(Luv) == setLabel.end())
 					setLabel.insert(make_pair(Luv, setLabel.size()));
 
-				pixels[v][u] = setLabel[Luv] * 32;
+				int Lid = setLabel[Luv];
+
+				if (Lid != 0) {
+					tmp_imgs[Lid - 1].set_pixel(u, v, 255);
+					volume[Lid - 1]++;
+				}
 			}
 		}
 
-		cout << setLabel.size() << endl;
+		//Move valid layers into "imgs" and return.
+		imgs.clear();
+
+		for (i = 0; i < Nobjects; i++) {
+			if (volume[i] > threshold)
+				imgs.push_back(tmp_imgs[i]);
+		}
 	}
 }
 
