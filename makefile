@@ -1,14 +1,14 @@
 CC     = g++
-CFLAGS = -g
+CFLAGS = -O3
 EXTDIR = cn_image
 
-all: main binarise
+all: graphgen graphpak binarise
 
-main: main.cpp $(EXTDIR)/basics.hpp $(EXTDIR)/image_processor.hpp $(EXTDIR)/image_processor.tpp
+graphgen: graphgen.cpp
 	$(CC) $(CFLAGS) -o $@ $<
 
-binarise: binarise.cpp $(EXTDIR)/basics.hpp $(EXTDIR)/image_processor.hpp $(EXTDIR)/image_processor.tpp
+graphpak: graphpak.cpp
 	$(CC) $(CFLAGS) -o $@ $<
 
 clean:
-	$(RM) main binarise
+	$(RM) graphgen graphpak
