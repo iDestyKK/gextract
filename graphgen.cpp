@@ -139,7 +139,9 @@ int main(int argc, char **argv) {
 				if (ee_img.get_pixel(u, v) != 255)
 					continue;
 
-				volume++;
+				if (edge_img.get_pixel(u, v) == 255)
+					volume++;
+
 				int Luv = cn_image::findLabel(cn_image::label[u][v]);
 				int Lid = cn_image::setLabel[Luv];
 
