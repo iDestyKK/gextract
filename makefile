@@ -2,7 +2,7 @@ CC     = g++
 CFLAGS = -O3
 EXTDIR = cn_image
 
-all: graphgen graphpak binarise
+all: graphgen graphpak
 
 graphgen: graphgen.cpp
 	$(CC) $(CFLAGS) -o $@ $<
