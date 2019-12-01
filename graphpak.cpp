@@ -29,7 +29,7 @@ struct img_file {
 	int w, h, d;
 	vector<unsigned char> data;
 
-	void dump(ofstream &);
+	void dump(ofstream &, bool = false);
 };
 
 img_file::img_file() {
@@ -54,7 +54,7 @@ void img_file::open(const char *fpath) {
 	fp.close();
 }
 
-void img_file::dump(ofstream &op) {
+void img_file::dump(ofstream &op, bool black_is_transparent) {
 	//Dump all bytes
 	//op.write((char *) &data[0], w * h);
 
@@ -64,9 +64,14 @@ void img_file::dump(ofstream &op) {
 	 */
 
 	int i, j;
-	unsigned char a = 0xFF;
+	unsigned char a;
 	for (j = 0; j < h; j++) {
 		for (i = 0; i < w; i++) {
+			if (black_is_transparent && data[i + (j * w)] == 0)
+				a = 0x00;
+			else
+				a = 0xFF;
+
 			op.write((char *) &data[i + (j * w)], 1);
 			op.write((char *) &data[i + (j * w)], 1);
 			op.write((char *) &data[i + (j * w)], 1);
@@ -168,13 +173,13 @@ int main(int argc, char **argv) {
 	offset_nodes = gpak.tellp();
 
 	for (i = 0; i < nodes.size(); i++)
-		nodes[i].dump(gpak);
+		nodes[i].dump(gpak, true);
 
 	//Dump all edges (RAW)
 	offset_edges = gpak.tellp();
 
 	for (i = 0; i < edges.size(); i++)
-		edges[i].dump(gpak);
+		edges[i].dump(gpak, true);
 
 	//Dump collision data
 	offset_collision = gpak.tellp();
