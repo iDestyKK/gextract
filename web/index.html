@@ -1,0 +1,51 @@
+<html>
+	<head>
+		<title>JS Reader</title>
+		<script type = "text/javascript" src = "data/js/pako.min.js"></script>
+		<script type = "text/javascript" src = "data/js/gpak.js"></script>
+	</head>
+
+	<body>
+		<input type = "file" id = "files" name = "gpak" />
+		<output id = "list"></output>
+
+		<canvas id = "image_canvas" width = "768" height = "576"></canvas>
+
+		<script type = "text/javascript">
+
+			function handleFileSelect(evt) {
+				files = evt.target.files;
+
+				reader = new FileReader();
+				reader.onload = function () {
+					var data = reader.result;
+					var gzip_bytes = new Uint8Array(data);
+
+					gpak_bytes = pako.inflate(gzip_bytes);
+					gpak_read(gpak_bytes);
+				};
+				reader.readAsArrayBuffer(files[0]);
+			}
+
+			document.getElementById('files').addEventListener('change', handleFileSelect, false);
+
+			var canvas = document.getElementById("image_canvas");
+			var context = canvas.getContext("2d");
+
+			function draw(e) {
+				let rect = canvas.getBoundingClientRect();
+
+				var m_coord = {
+					x: Math.floor(e.clientX - rect.left),
+					y: Math.floor(e.clientY - rect.top)
+				};
+
+				graph_draw(canvas, context, m_coord);
+			}
+
+			canvas.addEventListener('mousemove', function(e) {
+				draw(e);
+			});
+		</script>
+	</body>
+</html>
