@@ -187,6 +187,8 @@ void image_processor<T>::copy(const image_processor &from) {
 template <typename T>
 void image_processor<T>::resize(int nw, int nh) {
 	pixels.resize(nh, vector<T>(nw, T()));
+	width = nw;
+	height = nh;
 }
 
 template <typename T>
