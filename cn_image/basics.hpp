@@ -69,6 +69,31 @@ namespace cn_image {
 	}
 
 	/*
+	 * subtract
+	 *
+	 * Subtracts "sub" from "img".
+	 */
+
+	template <typename T>
+	void subtract(image_processor<T> &img, const image_processor<T> &sub) {
+		vector< vector<T> > &a = img.ext_get_pixels();
+		const vector< vector<T> > &b = sub.get_pixels();
+
+		int i, j, w, h;
+		w = img.get_width();
+		h = img.get_height();
+
+		for (j = 0; j < h; j++) {
+			for (i = 0; i < w; i++) {
+				if (a[j][i] > b[j][i])
+					a[j][i] -= b[j][i];
+				else
+					a[j][i] = 0;
+			}
+		}
+	}
+
+	/*
 	 * binarise
 	 *
 	 * Binarises the image via Otsu's Method
