@@ -29,7 +29,7 @@ struct img_file {
 	int w, h, d;
 	vector<unsigned char> data;
 
-	void dump(ofstream &, bool = false);
+	void dump(ofstream &);
 };
 
 img_file::img_file() {
@@ -54,13 +54,25 @@ void img_file::open(const char *fpath) {
 	fp.close();
 }
 
-void img_file::dump(ofstream &op, bool raw) {
-	//If raw, a header is not needed
-	if (!raw)
-		op << "P5\n" << w << " " << h << "\n" << d << "\n";
-
+void img_file::dump(ofstream &op) {
 	//Dump all bytes
-	op.write((char *) &data[0], w * h);
+	//op.write((char *) &data[0], w * h);
+
+	/*
+	 * To optimise for the web application, let's write 3 copies of every value
+	 * along with an alpha of 1...
+	 */
+
+	int i, j;
+	unsigned char a = 0xFF;
+	for (j = 0; j < h; j++) {
+		for (i = 0; i < w; i++) {
+			op.write((char *) &data[i + (j * w)], 1);
+			op.write((char *) &data[i + (j * w)], 1);
+			op.write((char *) &data[i + (j * w)], 1);
+			op.write((char *) &a                , 1);
+		}
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -150,19 +162,19 @@ int main(int argc, char **argv) {
 	//Dump master image
 	offset_master = gpak.tellp();
 
-	master.dump(gpak, true);
+	master.dump(gpak);
 
 	//Dump all nodes (RAW)
 	offset_nodes = gpak.tellp();
 
 	for (i = 0; i < nodes.size(); i++)
-		nodes[i].dump(gpak, true);
+		nodes[i].dump(gpak);
 
 	//Dump all edges (RAW)
 	offset_edges = gpak.tellp();
 
 	for (i = 0; i < edges.size(); i++)
-		edges[i].dump(gpak, true);
+		edges[i].dump(gpak);
 
 	//Dump collision data
 	offset_collision = gpak.tellp();
