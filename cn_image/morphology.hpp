@@ -38,29 +38,34 @@ namespace cn_image {
 		vector< vector<T> > &pixels = img.ext_get_pixels();
 		vector< vector<T> > &tmp_pixels = tmp.ext_get_pixels();
 
-		int n, m, i, j, r;
+		int n, m, i, j, r, r2, tn, tm;
+		r2 = rad * rad;
 
-		//Repeat "rad" times
-		for (r = 0; r < rad; r++) {
-			//For every pixel in the image
-			for (j = 0; j < img.get_height(); j++) {
-				for (i = 0; i < img.get_width(); i++) {
-					/*
-					 * Loop through surrounding pixels to see if any match. If
-					 * so, set. Otherwise, don't.
-					 */
+		//For every pixel in the image
+		for (j = 0; j < img.get_height(); j++) {
+			for (i = 0; i < img.get_width(); i++) {
+				/*
+				 * Loop through surrounding pixels to see if any match. If
+				 * so, set. Otherwise, don't.
+				 */
 
-					for (n = max(j - 1, 0); n < min(j + 1, (int) img.get_height()); n++) {
-						for (m = max(i - 1, 0); m < min(i + 1, (int) img.get_width()); m++) {
-							if (pixels[n][m] == 255)
-								tmp_pixels[j][i] = 255;
-						}
+				for (n = max(j - rad, 0); n <= min(j + rad, (int) img.get_height() - 1); n++) {
+					for (m = max(i - rad, 0); m <= min(i + rad, (int) img.get_width() - 1); m++) {
+						tn = n - j;
+						tm = m - i;
+
+						//Check if inside circle (H_DISK)
+						if (((tn * tn) + (tm * tm)) > r2)
+							continue;
+
+						if (pixels[n][m] == 255)
+							tmp_pixels[j][i] = 255;
 					}
 				}
 			}
-
-			pixels = tmp_pixels;
 		}
+
+		pixels = tmp_pixels;
 	}
 
 	/*
