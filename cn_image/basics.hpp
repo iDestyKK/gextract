@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <vector>
+#include <limits>
 #include "image_processor.hpp"
 
 using namespace std;
@@ -47,6 +48,24 @@ namespace cn_image {
 		for (j = 0; j < img.get_height(); j++)
 			for (i = 0; i < img.get_width(); i++)
 				histogram[pixels[j][i]]++;
+	}
+
+	/*
+	 * invert
+	 *
+	 * Inverts an image
+	 */
+
+	template <typename T>
+	void invert(image_processor<T> &img) {
+		unsigned int i, j;
+		vector< vector<T> > &pixels = img.ext_get_pixels();
+
+		for (j = 0; j < img.get_height(); j++) {
+			for (i = 0; i < img.get_width(); i++) {
+				pixels[j][i] = 255 - pixels[j][i];
+			}
+		}
 	}
 
 	/*
