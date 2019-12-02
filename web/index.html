@@ -1,17 +1,134 @@
 <html>
 	<head>
-		<title>JS Reader</title>
+		<title>gextract_view</title>
 		<script type = "text/javascript" src = "data/js/pako.min.js"></script>
 		<script type = "text/javascript" src = "data/js/gpak.js"></script>
+		<link rel = "stylesheet" href = "data/css/main.css">
+		<link rel = "stylesheet" href = "data/css/cn.main.css">
 	</head>
 
 	<body>
-		<input type = "file" id = "files" name = "gpak" />
-		<output id = "list"></output>
+		<!-- Top Bar -->
+		<div id = "banner-link-bar" class = "banner-links-under">
+			<div class = "banner-links-inner">
+				<div class = "site-txt">
+					WEB APP: GEXTRACT_VIEW
+				</div>
+				<a href = "../../index.php" class = "no-dec">
+					<div class = "banner-link">
+						HOME
+					</div>
+				</a>
+			</div>
+		</div>
 
-		<canvas id = "image_canvas" width = "768" height = "576"></canvas>
+		<!-- Left-hand side -->
+		<div class = "app_properties">
+			<!-- Configuration -->
+			<center>
+				<div class = "prop_header">
+					Application Configuration
+				</div>
+			</center>
+
+			<table class = "property_tbl">
+				<tr>
+					<td>GPAK File:</td>
+					<td width = "100%">
+						<input type = "file" id = "files" name = "gpak" style = "display: none;"/>
+						<input type = "button" value = "Select File" onclick = "document.getElementById('files').click();"/>
+					</td>
+				</tr>
+				<tr>
+					<td>Source:</td>
+					<td><input type = "button" value = "Select Point" onclick = "select_source();" /></td>
+				</tr>
+				<tr>
+					<td>Path Colour:</td>
+					<td><input type = "text" id = "path_colour" value = "#7F9FFF7F" onchange = "colour_update();" /></td>
+				</tr>
+				<tr>
+					<td>Algorithm:</td>
+					<td>
+						<select id = "path_algorithm">
+							<option value="dfs">Depth-First Search</option>
+							<option value="dijkstra">Dijkstra's Algorithm</option>
+						</select>
+					</td>
+				</tr>
+				<!--
+				<tr>
+					<td></td>
+					<td></td>
+				</tr>
+				-->
+			</table>
+
+			<!-- Graph Properties -->
+			<br/>
+			<center>
+				<div class = "prop_header">
+					Graph Properties
+				</div>
+			</center>
+
+			<table class = "property_tbl">
+				<tr>
+					<td>Nodes:</td>
+					<td><span id = "num_nodes">0</span></td>
+				</tr>
+				<tr>
+					<td>Edges:</td>
+					<td><span id = "num_edges">0</span></td>
+				</tr>
+			</table>
+
+			<!-- Path Properties -->
+			<br/>
+			<center>
+				<div class = "prop_header">
+					Path Properties
+				</div>
+			</center>
+
+			<table class = "property_tbl">
+				<tr>
+					<td>Source:</td>
+					<td><span id = "info_source">?</span></td>
+				</tr>
+				<tr>
+					<td>Sink:</td>
+					<td><span id = "info_sink">?</span></td>
+				</tr>
+				<tr>
+					<td>Distance:</td>
+					<td><span id = "info_dist">?</span></td>
+				</tr>
+				<!--
+				<tr>
+					<td></td>
+					<td></td>
+				</tr>
+				-->
+			</table>
+		</div>
+
+		<!-- Work Area -->
+		<div class = "app_workspace">
+			<canvas id = "image_canvas" class = "overlay_bottom" width = "768" height = "576"></canvas>
+			<canvas id = "path_canvas" class = "overlay_top" width = "768" height = "576"></canvas>
+		</div>
 
 		<script type = "text/javascript">
+			var point_S = { x: -1, y: -1 };
+			var point_T = { x: -1, y: -1 };
+			var source_id = -1;
+			var selecting_S = false;
+			var path_colour = "#7F9FFF7F";
+
+			function colour_update() {
+				path_colour = document.getElementById('path_colour').value;
+			}
 
 			function handleFileSelect(evt) {
 				files = evt.target.files;
@@ -35,7 +152,7 @@
 			function draw(e) {
 				let rect = canvas.getBoundingClientRect();
 
-				var m_coord = {
+				let m_coord = {
 					x: Math.floor(e.clientX - rect.left),
 					y: Math.floor(e.clientY - rect.top)
 				};
@@ -43,8 +160,36 @@
 				graph_draw(canvas, context, m_coord);
 			}
 
+			function select_source() {
+				if (!ready)
+					alert("Open an image first!");
+				selecting_S = true;
+			}
+
 			canvas.addEventListener('mousemove', function(e) {
 				draw(e);
+			});
+
+			canvas.addEventListener('mousedown', function(e) {
+				let rect = canvas.getBoundingClientRect();
+
+				let m_coord = {
+					x: Math.floor(e.clientX - rect.left),
+					y: Math.floor(e.clientY - rect.top)
+				};
+
+				if (selecting_S) {
+					let obj = graph_get_object(m_coord.x, m_coord.y);
+					console.log(obj);
+					if (obj != -1) {
+						point_S = m_coord;
+						document.getElementById("info_source").innerHTML = "Node " + obj + " @ (" + +point_S.x + ", " + +point_S.y + ")"
+						source_id = obj;
+						selecting_S = false;
+					}
+					else
+						alert("Invalid point!");
+				}
 			});
 		</script>
 	</body>

@@ -31,6 +31,11 @@ var collision_map;
 var graph;
 var ready = false;
 
+var g_w, g_h;
+
+//Store results
+var cache = {};
+
 const offset = {
 	BEGIN     : 0,
 	MASTER    : 1,
@@ -63,6 +68,9 @@ function gpak_read(bytes) {
 	let graph_lines;
 	let token;
 
+	//Reset the cache
+	cache = {};
+
 	ready = false;
 
 	/*
@@ -87,6 +95,13 @@ function gpak_read(bytes) {
 	let _ctx = document.getElementById("image_canvas").getContext('2d');
 	_ctx.canvas.width  = w;
 	_ctx.canvas.height = h;
+
+	_ctx = document.getElementById("path_canvas").getContext('2d');
+	_ctx.canvas.width  = w;
+	_ctx.canvas.height = h;
+
+	g_w = w;
+	g_h = h;
 
 	//Number of nodes and edges
 	n = byte2int(bytes, 4);
@@ -113,10 +128,15 @@ function gpak_read(bytes) {
 	//Parse graph CSV into an actual graph...
 	graph = {};
 	graph_lines = graph_csv.split('\n');
+	let real_edge_count = 0;
 
 	for (i = 0; i < graph_lines.length; i++) {
 		//CSV FORMAT: FROM, TO, EDGE_ID, WEIGHT
 		token = graph_lines[i].split(',');
+
+		if (token.length != 4)
+			continue;
+
 		let a   = +token[0];
 		let b   = +token[1];
 		let eid = +token[2];
@@ -128,6 +148,8 @@ function gpak_read(bytes) {
 		//Undirected graph edge insertion
 		graph[a][b] = { "e": eid, "w": w };
 		graph[b][a] = { "e": eid, "w": w };
+
+		real_edge_count++;
 	}
 
 	//Read the master image pixels in.
@@ -181,6 +203,10 @@ function gpak_read(bytes) {
 
 		for (i = 0; i < edge_image.length; i++)
 			edge_bitmap.push(r[node_image.length + i + 1]);
+
+		//Update graph properties on page
+		document.getElementById("num_nodes").innerHTML = node_bitmap.length;
+		document.getElementById("num_edges").innerHTML = real_edge_count;
 
 		ready = true;
 	});
@@ -247,6 +273,80 @@ function __graph_do_dfs(S, T, stack, estack, visited) {
 }
 
 /*
+ * graph_do_dijkstra
+ *
+ * Performs Dijkstra's algorithm on the graph to go from source S to sink T.
+ * (Gee, it's almost as if this code came from somewhere else...)
+ */
+
+function graph_do_dijkstra(S, T) {
+	//let visited = {};
+	//let stack = [];
+	//let estack = [];
+
+	//__graph_do_dfs(S, T, stack, estack, visited);
+
+	let nc = node_bitmap.length;
+	let visited = Array(nc).fill(0);
+	let vdist   = Array(nc).fill(Infinity);
+	let vlink   = Array(nc).fill(0);
+
+	vdist[S] = 0;
+	vlink[S] = S;
+
+	while (1) {
+		let next_i = -1;
+		let mindist = Infinity;
+
+		for (let i = 0; i < nc; i++) {
+			if (visited[i] == 0 && mindist > vdist[i]) {
+				next_i = i;
+				mindist = vdist[i];
+			}
+		}
+
+		let i = next_i;
+		if (i == -1)
+			break;
+
+		visited[i] = 1;
+
+		for (let k in graph[i]) {
+			let wik = graph[i][k].w;
+
+			if (visited[k] == 0) {
+				if (vdist[k] > vdist[i] + wik) {
+					vdist[k] = vdist[i] + wik;
+					vlink[k] = i;
+				}
+			}
+		}
+	}
+
+	let stack = [];
+
+	let ii = T, jj = S;
+	while (ii != S) {
+		stack.push(ii);
+		ii = vlink[ii];
+	}
+	stack.push(S);
+
+	//Cheat
+	stack.reverse();
+
+	//Generate edge stack
+	let estack = [];
+	for (i = 1; i < stack.length; i++)
+		estack.push(graph[stack[i - 1]][stack[i]].e);
+
+	return {
+		"n_path": stack, /* Nodes in path */
+		"e_path": estack /* Edges in path */
+	};
+}
+
+/*
  * graph_draw
  *
  * Draw handler for the graph.
@@ -257,16 +357,31 @@ function graph_draw(canvas, context, m_coord) {
 	if (ready === false)
 		return;
 
+	//Clear the path image
+	path_c = document.getElementById('path_canvas');
+	path_ctx = path_c.getContext('2d');
+	path_ctx.clearRect(0, 0, g_w, g_h);
+
 	//Draw the master image
 	context.globalCompositeOperation = 'source-over';
 	context.drawImage(master_bitmap, 0, 0);
 
+	if (source_id == -1 && !selecting_S)
+		return;
+
 	//Get the object we are at
 	let obj = graph_get_object(m_coord.x, m_coord.y);
 
-	context.globalCompositeOperation = 'screen';
+	if (obj == -1 || selecting_S) {
+		document.getElementById("info_sink").innerHTML = "?";
+		document.getElementById("info_dist").innerHTML = "?";
+	}
+	else
+		document.getElementById("info_sink").innerHTML = "Node " + obj + " @ (" + +m_coord.x + ", " + +m_coord.y + ")";
 
-	let S = 0;
+	path_ctx.globalCompositeOperation = 'lighten';
+
+	let S = source_id;
 	let T = obj;
 
 	/*
@@ -278,14 +393,60 @@ function graph_draw(canvas, context, m_coord) {
 
 	//If a node was selected, let's do DFS
 	if (obj != -1) {
-		let dfs_res = graph_do_dfs(S, T);
+		let distance = 0;
 
-		for (i = 0; i < dfs_res.n_path.length; i++)
-			context.drawImage(node_bitmap[dfs_res.n_path[i]], 0, 0);
+		if (selecting_S) {
+			path_ctx.drawImage(node_bitmap[obj], 0, 0);
+		}
+		else {
+			let dfs_res;
 
-		for (i = 0; i < dfs_res.e_path.length; i++)
-			context.drawImage(edge_bitmap[dfs_res.e_path[i]], 0, 0);
+			//Depending on algorithm selected, perform.
+			let ao = document.getElementById('path_algorithm');
+			let op = ao.options[ao.selectedIndex].value;
+
+			//Let's check out the cache...
+			if (!(op in cache))
+				cache[op] = {};
+
+			if (!(S in cache[op]))
+				cache[op][S] = {};
+
+			if (T in cache[op][S])
+				dfs_res = cache[op][S][T];
+			else {
+				switch (op) {
+					case "dfs"     : dfs_res = graph_do_dfs     (S, T); break;
+					case "dijkstra": dfs_res = graph_do_dijkstra(S, T); break;
+				}
+				cache[op][S][T] = dfs_res;
+			}
+
+			//Start keeping track of distance
+			distance = 0;
+
+			//Light up nodes
+			for (i = 0; i < dfs_res.n_path.length; i++) {
+				path_ctx.drawImage(node_bitmap[dfs_res.n_path[i]], 0, 0);
+
+				if (i != 0)
+					distance += graph[dfs_res.n_path[i - 1]][dfs_res.n_path[i]].w;
+			}
+
+			//Light up edges
+			for (i = 0; i < dfs_res.e_path.length; i++)
+				path_ctx.drawImage(edge_bitmap[dfs_res.e_path[i]], 0, 0);
+		}
+
+		//Colour the path based on "Path Colour"
+		path_ctx.globalCompositeOperation = 'source-in';
+		path_ctx.fillStyle = path_colour;
+		path_ctx.fillRect(0, 0, g_w, g_h);
+
+		//Update the distance statistic
+		if (obj != -1 && !selecting_S)
+			document.getElementById("info_dist").innerHTML = +distance;
 	}
 
-	context.globalCompositeOperation = 'source-over';
+	path_ctx.globalCompositeOperation = 'source-over';
 }
